@@ -1,0 +1,50 @@
+/* Content stays visible without animations or IntersectionObserver. */
+@media (prefers-reduced-motion: no-preference) {
+    .portfolio-site .name-mask > span { animation: name-enter 780ms cubic-bezier(.16, 1, .3, 1) both; }
+    .portfolio-site .family-name > span { animation-delay: 90ms; }
+    .portfolio-site .hero-note { animation: content-enter 650ms 180ms cubic-bezier(.16, 1, .3, 1) both; }
+    .portfolio-site .hero-portrait { animation: portrait-enter 850ms 100ms cubic-bezier(.16, 1, .3, 1) both; }
+    .portfolio-site .reveal.is-visible { animation: content-enter 650ms cubic-bezier(.16, 1, .3, 1) both; animation-delay: calc(var(--reveal-order, 0) * 70ms); }
+    .portfolio-site .project-showcase.reveal.is-visible { animation-name: showcase-enter; }
+    .portfolio-site .career-row.reveal.is-visible { animation-name: row-enter; }
+    .portfolio-site .hero-bottom { animation: content-enter 600ms 260ms cubic-bezier(.16, 1, .3, 1) both; }
+
+    .portfolio-site .button { transition: transform 180ms ease; }
+    .portfolio-site .button:active { transform: scale(.98); }
+    .portfolio-site .text-link svg, .portfolio-site .button svg, .portfolio-site .social-links svg, .portfolio-site .contact-links > a svg, .portfolio-site .footer-name svg { transition: transform 250ms cubic-bezier(.16, 1, .3, 1); }
+    .portfolio-site .text-link:hover svg, .portfolio-site .text-link:focus-visible svg, .portfolio-site .button:hover svg, .portfolio-site .button:focus-visible svg { transform: translate(3px, -3px); }
+    .portfolio-site .hero-bottom .text-link:hover svg, .portfolio-site .hero-bottom .text-link:focus-visible svg { transform: translateY(4px); }
+    .portfolio-site .footer-top .text-link:hover svg, .portfolio-site .footer-top .text-link:focus-visible svg { transform: rotate(180deg) translateY(4px); }
+    .portfolio-site .contact-links a:hover svg, .portfolio-site .contact-links a:focus-visible svg, .portfolio-site .footer-name:hover svg, .portfolio-site .footer-name:focus-visible svg { transform: translate(3px, -3px); }
+    .portfolio-site .site-header nav a::after { transition: transform 220ms ease; }
+    .portfolio-site .site-header nav a:hover::after, .portfolio-site .site-header nav a:focus-visible::after { transform: scaleX(1); }
+    .portfolio-site .project-selectors svg { transition: transform 250ms ease, opacity 250ms ease; }
+    .portfolio-site .project-selectors button:hover svg, .portfolio-site .project-selectors button:focus-visible svg { opacity: 1; transform: translate(3px, -3px); }
+
+    @media (hover: hover) and (pointer: fine) {
+        .portfolio-site .portrait-frame img { transition: transform 450ms cubic-bezier(.16, 1, .3, 1); }
+        .portfolio-site .hero-portrait:hover .portrait-frame img { transform: scale(1.025); }
+    }
+    @media (max-width: 760px) {
+        .portfolio-site .site-header nav.is-open { animation: menu-enter 240ms cubic-bezier(.16, 1, .3, 1) both; }
+    }
+    ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+    ::view-transition-group(selected-project) { animation-duration: 280ms; }
+    ::view-transition-old(selected-project) { animation: project-out 150ms ease both; }
+    ::view-transition-new(selected-project) { animation: project-in 280ms cubic-bezier(.16, 1, .3, 1) both; }
+}
+
+@keyframes name-enter { from { opacity: .2; transform: translateY(105%); } to { opacity: 1; transform: translateY(0); } }
+@keyframes content-enter { from { opacity: .35; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes portrait-enter { from { opacity: .35; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes showcase-enter { from { opacity: .4; transform: scale(.985); } to { opacity: 1; transform: scale(1); } }
+@keyframes row-enter { from { opacity: .35; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes menu-enter { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes project-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes project-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .portfolio-site *, .portfolio-site *::before, .portfolio-site *::after { animation: none !important; transition: none !important; }
+    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
