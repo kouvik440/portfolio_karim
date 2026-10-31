@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "portfolio-developpeur-premium": {
+      "source": "./agents_skills/skill-portfolio-developpeur-premium",
+      "sourceType": "local",
+      "computedHash": "07d166ca504868f9415a93f29cf68d52aae82013e14240c1e0087edd8bf9bf11"
+    }
+  }
+}

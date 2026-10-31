@@ -3,18 +3,21 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\SavePortfolioEntryRequest;
+use App\Http\Requests\Admin\SavePortfolioProfileRequest;
+use App\Http\Requests\Admin\SavePortfolioSettingsRequest;
 use App\Models\ContactMessage;
 use App\Models\PortfolioEntry;
 use App\Models\PortfolioProfile;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PortfolioController extends Controller
 {
-    public const TYPES = ['education', 'experience', 'skill', 'interest', 'language', 'project'];
+    public const TYPES = ['education', 'experience', 'skill', 'interest', 'language', 'project', 'news'];
 
     public function index(): View
     {
@@ -27,30 +30,28 @@ class PortfolioController extends Controller
 
         return response()->json([
             'profile' => $profile,
-            'entries' => PortfolioEntry::orderBy('sort_order')->orderBy('id')->get(),
+            'content_defaults' => PortfolioProfile::CONTENT_DEFAULTS,
+            'entries' => PortfolioEntry::orderBy('sort_order')->orderBy('id')->get()->map(function (PortfolioEntry $entry): array {
+                return [...$entry->toArray(),
+                    'cover_url' => $entry->cover_path ? route('admin.entries.media', [$entry, 'cover']) : null,
+                    'gallery_urls' => array_map(fn ($index) => route('admin.entries.media', [$entry, 'gallery', $index]), array_keys($entry->gallery_paths ?? [])),
+                    'public_url' => $entry->is_published ? $entry->publicData()['detail_url'] : null,
+                ];
+            }),
+            'stats' => [
+                'published_projects' => PortfolioEntry::where('type', 'project')->where('is_published', true)->count(),
+                'draft_projects' => PortfolioEntry::where('type', 'project')->where('is_published', false)->count(),
+                'unread_messages' => ContactMessage::whereNull('read_at')->count(),
+                'total_messages' => ContactMessage::count(),
+            ],
             'cv_url' => $profile?->cv_path ? route('portfolio.media', 'cv') : null,
             'photo_url' => $profile?->photo_path ? route('portfolio.media', 'photo') : null,
         ])->header('Cache-Control', 'no-store');
     }
 
-    public function profile(Request $request): JsonResponse
+    public function profile(SavePortfolioProfileRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'full_name' => ['required', 'string', 'max:255'],
-            'display_name' => ['required', 'string', 'max:60'],
-            'job_title' => ['required', 'string', 'max:255'],
-            'tagline' => ['nullable', 'string', 'max:255'],
-            'bio' => ['nullable', 'string', 'max:10000'],
-            'email' => ['nullable', 'email', 'max:254'],
-            'phone' => ['nullable', 'string', 'max:60'],
-            'location' => ['nullable', 'string', 'max:255'],
-            'github_url' => ['nullable', 'url:http,https', 'max:2048'],
-            'linkedin_url' => ['nullable', 'url:http,https', 'max:2048'],
-            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'cv' => ['nullable', 'file', 'mimes:pdf', 'max:2048'],
-            'remove_photo' => ['nullable', 'boolean'],
-            'remove_cv' => ['nullable', 'boolean'],
-        ]);
+        $data = $request->validated();
         $profile = PortfolioProfile::firstOrNew(['id' => 1]);
         $oldPaths = [];
         foreach (['cv', 'photo'] as $field) {
@@ -68,25 +69,44 @@ class PortfolioController extends Controller
         return response()->json(['message' => 'Profil enregistré.']);
     }
 
-    public function store(Request $request): JsonResponse
+    public function settings(SavePortfolioSettingsRequest $request): JsonResponse
     {
-        $entry = PortfolioEntry::create($this->validatedEntry($request));
+        $profile = PortfolioProfile::firstOrNew(['id' => 1]);
+        $profile->fill($request->validated())->save();
+
+        return response()->json(['message' => 'Textes et paramètres enregistrés.']);
+    }
+
+    public function store(SavePortfolioEntryRequest $request): JsonResponse
+    {
+        $entry = $this->saveEntry($request, new PortfolioEntry);
 
         return response()->json(['message' => 'Élément ajouté.', 'entry' => $entry], 201);
     }
 
-    public function update(Request $request, PortfolioEntry $entry): JsonResponse
+    public function update(SavePortfolioEntryRequest $request, PortfolioEntry $entry): JsonResponse
     {
-        $entry->update($this->validatedEntry($request));
+        $this->saveEntry($request, $entry);
 
         return response()->json(['message' => 'Élément enregistré.', 'entry' => $entry]);
     }
 
     public function destroy(PortfolioEntry $entry): JsonResponse
     {
+        $paths = array_filter([$entry->cover_path, ...($entry->gallery_paths ?? [])]);
         $entry->delete();
+        Storage::disk('local')->delete($paths);
 
         return response()->json(['message' => 'Élément supprimé.']);
+    }
+
+    public function entryMedia(PortfolioEntry $entry, string $kind, ?int $index = null): StreamedResponse
+    {
+        abort_unless(in_array($kind, ['cover', 'gallery'], true), 404);
+        $path = $kind === 'cover' ? $entry->cover_path : ($entry->gallery_paths[$index ?? -1] ?? null);
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path, null, ['X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store']);
     }
 
     public function messages(): JsonResponse
@@ -94,20 +114,54 @@ class PortfolioController extends Controller
         return response()->json(ContactMessage::latest()->paginate(20))->header('Cache-Control', 'no-store');
     }
 
-    private function validatedEntry(Request $request): array
+    public function readMessage(ContactMessage $message): JsonResponse
     {
-        return $request->validate([
-            'type' => ['required', Rule::in(self::TYPES)],
-            'title' => ['required', 'string', 'max:255'],
-            'organization' => ['nullable', 'string', 'max:255'],
-            'period' => ['nullable', 'string', 'max:120'],
-            'category' => ['nullable', 'string', 'max:120'],
-            'description' => ['nullable', 'string', 'max:10000'],
-            'url' => ['nullable', 'url:http,https', 'max:2048'],
-            'technologies' => ['nullable', 'array', 'max:30'],
-            'technologies.*' => ['string', 'max:80'],
-            'sort_order' => ['required', 'integer', 'min:0', 'max:10000'],
-            'is_published' => ['required', 'boolean'],
-        ]);
+        $message->read_at = $message->read_at ? null : now();
+        $message->save();
+
+        return response()->json(['message' => $message->read_at ? 'Message marqué comme lu.' : 'Message marqué comme non lu.']);
+    }
+
+    public function destroyMessage(ContactMessage $message): JsonResponse
+    {
+        $message->delete();
+
+        return response()->json(['message' => 'Message supprimé.']);
+    }
+
+    private function saveEntry(SavePortfolioEntryRequest $request, PortfolioEntry $entry): PortfolioEntry
+    {
+        $data = $request->validated();
+        $oldPaths = [];
+        $newPaths = [];
+        if (in_array($data['type'], ['project', 'news'], true)) {
+            $data['slug'] = $data['slug'] ?? $entry->slug ?? Str::limit(Str::slug($data['title']) ?: 'projet', 160, '').'-'.Str::lower(Str::random(8));
+            if ($request->hasFile('cover') || $request->boolean('remove_cover')) {
+                $oldPaths[] = $entry->cover_path;
+                $data['cover_path'] = $request->hasFile('cover') ? $request->file('cover')->store('portfolio/projects', 'local') : null;
+                if ($data['cover_path']) {
+                    $newPaths[] = $data['cover_path'];
+                }
+            }
+            if ($request->hasFile('gallery') || $request->boolean('remove_gallery')) {
+                $oldPaths = [...$oldPaths, ...($entry->gallery_paths ?? [])];
+                $data['gallery_paths'] = [];
+                foreach ($request->file('gallery', []) as $image) {
+                    $path = $image->store('portfolio/projects', 'local');
+                    $data['gallery_paths'][] = $path;
+                    $newPaths[] = $path;
+                }
+            }
+        }
+        unset($data['cover'], $data['gallery'], $data['remove_cover'], $data['remove_gallery']);
+        try {
+            $entry->fill($data)->save();
+        } catch (\Throwable $exception) {
+            Storage::disk('local')->delete($newPaths);
+            throw $exception;
+        }
+        Storage::disk('local')->delete(array_filter($oldPaths));
+
+        return $entry;
     }
 }

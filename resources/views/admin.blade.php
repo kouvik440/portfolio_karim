@@ -18,6 +18,7 @@
         'logoutUrl' => route('admin.logout'),
         'dataUrl' => route('admin.data'),
         'profileUrl' => route('admin.profile'),
+        'settingsUrl' => route('admin.settings'),
         'entriesUrl' => route('admin.entries.store'),
         'messagesUrl' => route('admin.messages'),
     ]) !!}</script>

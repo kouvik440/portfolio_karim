@@ -1,0 +1,91 @@
+/* Palette Aurora Graphite — importer APRES les styles de base et adapter
+   aux tokens shadcn/Tailwind existants. Aucun changement global destructif. */
+:root {
+  --portfolio-bg: #080c17;
+  --portfolio-surface: #10192a;
+  --portfolio-text: #f5f8ff;
+  --portfolio-muted: #a7b2c8;
+  --portfolio-line: rgb(176 199 236 / 15%);
+  --portfolio-accent: #55e4cb;
+  --portfolio-violet: #9988ff;
+  --portfolio-radius: 22px;
+}
+
+.portfolio-shell {
+  position: relative;
+  min-height: 100dvh;
+  isolation: isolate;
+  overflow: clip;
+  background: var(--portfolio-bg);
+  color: var(--portfolio-text);
+}
+.portfolio-container {
+  width: min(100% - 2rem, 1200px);
+  margin-inline: auto;
+}
+.portfolio-card {
+  background: rgb(16 25 42 / 80%);
+  border: 1px solid var(--portfolio-line);
+  border-radius: var(--portfolio-radius);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 15%);
+}
+.portfolio-gradient-text {
+  background: linear-gradient(115deg, #f5f8ff 16%, #55e4cb 73%, #b1a3ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.portfolio-focus:focus-visible {
+  outline: 3px solid var(--portfolio-accent);
+  outline-offset: 4px;
+}
+.portfolio-ambient {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+.portfolio-ambient::before,
+.portfolio-ambient::after {
+  content: "";
+  position: absolute;
+  width: min(62vw, 700px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: .17;
+}
+.portfolio-ambient::before {
+  top: -260px;
+  right: -180px;
+  background: radial-gradient(circle, #55e4cb, transparent 70%);
+}
+.portfolio-ambient::after {
+  top: 390px;
+  left: -340px;
+  background: radial-gradient(circle, #9988ff, transparent 70%);
+}
+.portfolio-ambient-grid {
+  position: absolute;
+  inset: 0;
+  opacity: .17;
+  background-image: linear-gradient(rgb(163 187 210 / 9%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(163 187 210 / 9%) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+}
+@media (max-width: 640px) {
+  .portfolio-container { width: min(100% - 2rem, 1200px); }
+  .portfolio-ambient::before, .portfolio-ambient::after {
+    filter: blur(45px);
+    opacity: .1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portfolio-shell *, .portfolio-shell *::before, .portfolio-shell *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
