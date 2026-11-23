@@ -42,39 +42,75 @@ class PortfolioController extends Controller
         return view('app', ['portfolio' => [...$this->publicContent(), 'news_detail' => $entry->publicData()], 'canonical' => route('news.show', $entry->slug)]);
     }
 
-    public function newsMedia(PortfolioEntry $entry, string $kind, ?int $index = null): StreamedResponse
+    public function newsMedia(PortfolioEntry $entry, string $kind, ?int $index = null): Response|StreamedResponse
     {
         abort_unless($entry->type === 'news' && $entry->is_published, 404);
 
         return $this->entryMedia($entry, $kind, $index);
     }
 
-    public function projectMedia(PortfolioEntry $entry, string $kind, ?int $index = null): StreamedResponse
+    public function projectMedia(PortfolioEntry $entry, string $kind, ?int $index = null): Response|StreamedResponse
     {
         abort_unless($entry->type === 'project' && $entry->is_published, 404);
 
         return $this->entryMedia($entry, $kind, $index);
     }
 
-    private function entryMedia(PortfolioEntry $entry, string $kind, ?int $index): StreamedResponse
+    private function entryMedia(PortfolioEntry $entry, string $kind, ?int $index): Response|StreamedResponse
     {
         abort_unless(in_array($kind, ['cover', 'gallery'], true), 404);
         $path = $kind === 'cover' ? $entry->cover_path : ($entry->gallery_paths[$index ?? -1] ?? null);
-        abort_unless($path && Storage::disk('local')->exists($path), 404);
+        abort_unless($path, 404);
 
-        return Storage::disk('local')->response($path, null, ['X-Content-Type-Options' => 'nosniff']);
+        return $this->serveCachedMedia($path);
     }
 
-    public function media(string $kind): StreamedResponse
+    public function media(string $kind): Response|StreamedResponse
     {
         abort_unless(in_array($kind, ['cv', 'photo'], true), 404);
         $profile = PortfolioProfile::findOrFail(1);
         $path = $profile->getAttribute($kind === 'cv' ? 'cv_path' : 'photo_path');
-        abort_unless($path && Storage::disk('local')->exists($path), 404);
+        abort_unless($path, 404);
 
         return $kind === 'cv'
-            ? Storage::disk('local')->download($path, 'CV-Karim-Ouedraogo.pdf', ['Content-Type' => 'application/pdf'])
-            : Storage::disk('local')->response($path, null, ['X-Content-Type-Options' => 'nosniff']);
+            ? $this->serveCachedMedia($path, 'CV-Karim-Ouedraogo.pdf', 'application/pdf')
+            : $this->serveCachedMedia($path);
+    }
+
+    private function serveCachedMedia(string $path, ?string $downloadName = null, ?string $contentType = null): Response|StreamedResponse
+    {
+        abort_unless(Storage::disk('local')->exists($path), 404);
+
+        $disk = Storage::disk('local');
+        $lastModified = $disk->lastModified($path);
+        $size = $disk->size($path);
+        $etag = '"'.sha1($path.$lastModified.$size).'"';
+
+        $clientEtag = request()->header('If-None-Match');
+        $clientModifiedSince = request()->header('If-Modified-Since');
+
+        if ($clientEtag === $etag || ($clientModifiedSince && strtotime($clientModifiedSince) >= $lastModified)) {
+            return response('', 304, [
+                'ETag' => $etag,
+                'Last-Modified' => gmdate('D, d M Y H:i:s', $lastModified).' GMT',
+                'Cache-Control' => 'public, max-age=604800, stale-while-revalidate=2592000',
+            ]);
+        }
+
+        $headers = [
+            'X-Content-Type-Options' => 'nosniff',
+            'ETag' => $etag,
+            'Last-Modified' => gmdate('D, d M Y H:i:s', $lastModified).' GMT',
+            'Cache-Control' => 'public, max-age=604800, stale-while-revalidate=2592000',
+        ];
+
+        if ($contentType) {
+            $headers['Content-Type'] = $contentType;
+        }
+
+        return $downloadName
+            ? $disk->download($path, $downloadName, $headers)
+            : $disk->response($path, null, $headers);
     }
 
     public function sitemap(): Response

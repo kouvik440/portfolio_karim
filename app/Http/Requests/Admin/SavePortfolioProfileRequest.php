@@ -25,10 +25,23 @@ class SavePortfolioProfileRequest extends FormRequest
             'location' => ['nullable', 'string', 'max:255'],
             'github_url' => ['nullable', 'url:http,https', 'max:2048'],
             'linkedin_url' => ['nullable', 'url:http,https', 'max:2048'],
-            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=4096,max_height=4096'],
-            'cv' => ['nullable', 'file', 'mimes:pdf', 'max:2048'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240', 'dimensions:max_width=8192,max_height=8192'],
+            'cv' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
             'remove_photo' => ['nullable', 'boolean'],
             'remove_cv' => ['nullable', 'boolean'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'photo.max' => 'La photo de profil ne doit pas dépasser 10 Mo.',
+            'photo.image' => 'Le fichier doit être une image valide.',
+            'cv.max' => 'Le CV ne doit pas dépasser 10 Mo.',
+            'cv.mimes' => 'Le CV doit être au format PDF.',
         ];
     }
 }

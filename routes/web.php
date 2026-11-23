@@ -18,11 +18,21 @@ Route::get('/robots.txt', [PortfolioController::class, 'robots'])->name('robots'
 Route::get('/portfolio/media/{kind}', [PortfolioController::class, 'media'])->whereIn('kind', ['cv', 'photo'])->name('portfolio.media');
 Route::post('/contact', ContactController::class)->middleware('throttle:5,1')->name('contact.store');
 
-Route::view('/admin/connexion', 'admin', ['login' => true])->name('login');
+Route::view('/admin/connexion', 'admin', ['login' => true, 'register' => false])->name('login');
 Route::post('/admin/connexion', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('admin.login');
+Route::view('/admin/inscription', 'admin', ['login' => true, 'register' => true])->name('admin.register');
+Route::post('/admin/inscription', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('admin.register.submit');
 Route::middleware(['auth', EnsureAdministrator::class])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/', [AdminPortfolioController::class, 'index'])->name('index');
     Route::get('/data', [AdminPortfolioController::class, 'data'])->name('data');
+    Route::get('/utilisateurs', [AdminPortfolioController::class, 'users'])->name('users.index');
+    Route::post('/utilisateurs', [AdminPortfolioController::class, 'storeUser'])->name('users.store');
+    Route::put('/utilisateurs/{user}/roles', [AdminPortfolioController::class, 'updateUserRoles'])->name('users.roles.update');
+    Route::delete('/utilisateurs/{user}', [AdminPortfolioController::class, 'destroyUser'])->name('users.destroy');
+    Route::get('/roles', [AdminPortfolioController::class, 'roles'])->name('roles.index');
+    Route::post('/roles', [AdminPortfolioController::class, 'storeRole'])->name('roles.store');
+    Route::put('/roles/{role}', [AdminPortfolioController::class, 'updateRole'])->name('roles.update');
+    Route::delete('/roles/{role}', [AdminPortfolioController::class, 'destroyRole'])->name('roles.destroy');
     Route::post('/profil', [AdminPortfolioController::class, 'profile'])->name('profile');
     Route::post('/parametres', [AdminPortfolioController::class, 'settings'])->name('settings');
     Route::post('/elements', [AdminPortfolioController::class, 'store'])->name('entries.store');

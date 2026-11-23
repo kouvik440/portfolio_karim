@@ -13,9 +13,13 @@
     <div id="admin-root"></div>
     <script type="application/json" id="admin-config">{!! \Illuminate\Support\Js::encode([
         'login' => $login,
+        'register' => $register ?? false,
         'home' => route('home'),
         'loginUrl' => route('admin.login'),
+        'registerUrl' => route('admin.register.submit'),
         'logoutUrl' => route('admin.logout'),
+        'usersUrl' => route('admin.users.index'),
+        'rolesUrl' => route('admin.roles.index'),
         'dataUrl' => route('admin.data'),
         'profileUrl' => route('admin.profile'),
         'settingsUrl' => route('admin.settings'),

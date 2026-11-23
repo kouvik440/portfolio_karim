@@ -9,6 +9,7 @@ const sections = [
     ['profile', 'Profil & CV'], ['education', 'Formations'], ['experience', 'Expériences'],
     ['skill', 'Compétences techniques'], ['project', 'Projets'], ['news', 'Actualités'], ['language', 'Langues'],
     ['interest', 'Centres d’intérêt'], ['contact', 'Coordonnées'], ['messages', 'Messages reçus'], ['settings', 'Textes & paramètres'],
+    ['users', 'Utilisateurs & Rôles'],
 ];
 const profileKeys = ['full_name', 'display_name', 'job_title', 'tagline', 'bio', 'email', 'phone', 'location', 'github_url', 'linkedin_url', 'availability'];
 
@@ -45,13 +46,95 @@ function useSubmission() {
     return { busy, errors, notice, setNotice, run };
 }
 
-function Login() {
+function Auth() {
+    const [mode, setMode] = useState(config.register ? 'register' : 'login');
     const state = useSubmission();
-    return <main className="admin-login"><a href={config.home} className="admin-brand">k. <span>Portfolio Karim</span></a><div className="login-panel"><h1>Connexion administrateur</h1><p>Votre espace pour faire évoluer le portfolio.</p><form onSubmit={event => { event.preventDefault(); const body = Object.fromEntries(new FormData(event.currentTarget)); state.run(async () => { const data = await request(config.loginUrl, {method: 'POST', body}); window.location.assign(data.redirect); }); }}>
-        <Field name="email" label="Adresse e-mail" type="email" required autoComplete="username" errors={state.errors} />
-        <Field name="password" label="Mot de passe" type="password" required autoComplete="current-password" errors={state.errors} />
-        <button className="admin-primary" disabled={state.busy}>{state.busy ? 'Connexion…' : 'Se connecter'}</button><p className="admin-error" role="alert">{state.notice}</p>
-    </form></div></main>;
+
+    async function handleLogin(event) {
+        event.preventDefault();
+        const body = Object.fromEntries(new FormData(event.currentTarget));
+        await state.run(async () => {
+            const data = await request(config.loginUrl, { method: 'POST', body });
+            window.location.assign(data.redirect);
+        });
+    }
+
+    async function handleRegister(event) {
+        event.preventDefault();
+        const body = Object.fromEntries(new FormData(event.currentTarget));
+        await state.run(async () => {
+            const data = await request(config.registerUrl, { method: 'POST', body });
+            window.location.assign(data.redirect);
+        });
+    }
+
+    return (
+        <main className="admin-login">
+            <a href={config.home} className="admin-brand">
+                k. <span>Portfolio Karim</span>
+            </a>
+            <div className="login-panel">
+                <div className="admin-auth-tabs" role="tablist">
+                    <button
+                        type="button"
+                        className={`admin-auth-tab ${mode === 'login' ? 'is-active' : ''}`}
+                        onClick={() => { setMode('login'); state.setNotice(''); }}
+                    >
+                        Se connecter
+                    </button>
+                    <button
+                        type="button"
+                        className={`admin-auth-tab ${mode === 'register' ? 'is-active' : ''}`}
+                        onClick={() => { setMode('register'); state.setNotice(''); }}
+                    >
+                        Créer un compte
+                    </button>
+                </div>
+
+                {mode === 'login' ? (
+                    <>
+                        <h1>Connexion administrateur</h1>
+                        <p>Accédez à votre espace pour gérer vos projets et actualités.</p>
+                        <form onSubmit={handleLogin}>
+                            <Field name="email" label="Adresse e-mail" type="email" required autoComplete="username" errors={state.errors} />
+                            <Field name="password" label="Mot de passe" type="password" required autoComplete="current-password" errors={state.errors} />
+                            <button className="admin-primary" disabled={state.busy}>
+                                {state.busy ? 'Connexion…' : 'Se connecter'}
+                            </button>
+                            <p className="admin-error" role="alert">{state.notice}</p>
+                            <div className="admin-auth-toggle">
+                                <span>Pas encore de compte ?</span>
+                                <button type="button" onClick={() => { setMode('register'); state.setNotice(''); }}>
+                                    Créer un compte
+                                </button>
+                            </div>
+                        </form>
+                    </>
+                ) : (
+                    <>
+                        <h1>Créer un compte administrateur</h1>
+                        <p>Configurez vos accès pour gérer votre portfolio en toute autonomie.</p>
+                        <form onSubmit={handleRegister}>
+                            <Field name="name" label="Nom complet" required placeholder="ex. Karim OUEDRAOGO" errors={state.errors} />
+                            <Field name="email" label="Adresse e-mail" type="email" required autoComplete="email" placeholder="votre-email@example.com" errors={state.errors} />
+                            <Field name="password" label="Mot de passe (8 caractères minimum)" type="password" required autoComplete="new-password" errors={state.errors} />
+                            <Field name="password_confirmation" label="Confirmez le mot de passe" type="password" required autoComplete="new-password" errors={state.errors} />
+                            <button className="admin-primary" disabled={state.busy}>
+                                {state.busy ? 'Création du compte…' : 'Créer mon compte'}
+                            </button>
+                            <p className="admin-error" role="alert">{state.notice}</p>
+                            <div className="admin-auth-toggle">
+                                <span>Vous avez déjà un compte ?</span>
+                                <button type="button" onClick={() => { setMode('login'); state.setNotice(''); }}>
+                                    Se connecter
+                                </button>
+                            </div>
+                        </form>
+                    </>
+                )}
+            </div>
+        </main>
+    );
 }
 
 function ProfileForm({ data, contactOnly, refresh, notify }) {
@@ -66,9 +149,9 @@ function ProfileForm({ data, contactOnly, refresh, notify }) {
             <Field name="full_name" label="Nom complet" required maxLength={255} value={profile.full_name} errors={state.errors} /><div className="admin-form-grid"><Field name="display_name" label="Nom affiché en grand" required maxLength={60} value={profile.display_name} errors={state.errors} /><Field name="job_title" label="Intitulé de métier" required maxLength={255} value={profile.job_title} errors={state.errors} /></div>
             <Field name="tagline" label="Phrase de présentation" maxLength={255} value={profile.tagline} errors={state.errors} /><Field name="bio" label="Profil / biographie" textarea rows={6} maxLength={10000} value={profile.bio} errors={state.errors} />
             <Field name="availability" label="Disponibilité (facultatif, vide pour masquer)" maxLength={180} value={profile.availability} errors={state.errors} />
-            <label className="admin-field">Photo de profil<input name="photo" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-help" /><small id="photo-help">JPEG, PNG ou WebP · 2 Mo maximum.</small>{state.errors.photo && <span className="admin-error">{state.errors.photo[0]}</span>}</label>
+            <label className="admin-field">Photo de profil<input name="photo" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-help" /><small id="photo-help">JPEG, PNG ou WebP · 10 Mo maximum.</small>{state.errors.photo && <span className="admin-error">{state.errors.photo[0]}</span>}</label>
             <label className="admin-check"><input name="remove_photo" type="checkbox" value="1" />Retirer la photo actuelle</label>
-            <label className="admin-field">CV au format PDF<input name="cv" type="file" accept="application/pdf" aria-describedby="cv-help" /><small id="cv-help">PDF · 2 Mo maximum. Le CV sera téléchargeable publiquement.</small>{state.errors.cv && <span className="admin-error">{state.errors.cv[0]}</span>}</label>
+            <label className="admin-field">CV au format PDF<input name="cv" type="file" accept="application/pdf" aria-describedby="cv-help" /><small id="cv-help">PDF · 10 Mo maximum. Le CV sera téléchargeable publiquement.</small>{state.errors.cv && <span className="admin-error">{state.errors.cv[0]}</span>}</label>
             <label className="admin-check"><input name="remove_cv" type="checkbox" value="1" />Retirer le CV actuel</label>
         </>}
         <p className="admin-error" role="alert">{state.notice}</p><button className="admin-primary" disabled={state.busy}>{state.busy ? 'Enregistrement…' : 'Enregistrer les modifications'}</button>
@@ -85,29 +168,41 @@ const entryLabels = {
     interest: ['Centre d’intérêt', 'Organisation', 'Période'],
 };
 
-function EntryMedia({ entry, errors }) {
+function CoverUpload({ entry, errors }) {
     return <>
-            {entry?.cover_url && <img className="admin-project-cover" src={entry.cover_url} alt={entry.cover_alt || entry.title} />}
-            <label className="admin-field">Photo principale<input type="file" name="cover" accept="image/jpeg,image/png,image/webp" /><small>JPEG, PNG ou WebP · 2 Mo maximum · 4 096 pixels maximum.</small>{errors.cover && <span className="admin-error">{errors.cover[0]}</span>}</label>
-            <Field name="cover_alt" label="Description de l’image pour l’accessibilité" value={entry?.cover_alt} maxLength={255} errors={errors} />
-            <label className="admin-check"><input type="checkbox" name="remove_cover" value="1" />Retirer la couverture actuelle</label>
-            {!!entry?.gallery_urls?.length && <div className="admin-gallery">{entry.gallery_urls.map((url, index) => <img key={url} src={url} alt={`${entry.title}, capture ${index + 1}`} />)}</div>}
-            <label className="admin-field">Photos complémentaires<input type="file" name="gallery[]" multiple accept="image/jpeg,image/png,image/webp" /><small>3 images maximum, 1 Mo chacune. Les nouveaux fichiers remplacent la galerie actuelle.</small>{Object.entries(errors).filter(([key]) => key.startsWith('gallery')).map(([key, messages]) => <span className="admin-error" key={key}>{messages[0]}</span>)}</label>
-            <label className="admin-check"><input type="checkbox" name="remove_gallery" value="1" />Retirer toute la galerie actuelle</label>
+        {entry?.cover_url && <img className="admin-project-cover" src={entry.cover_url} alt={entry.cover_alt || entry.title} />}
+        <label className="admin-field">Photo de couverture (facultatif)<input type="file" name="cover" accept="image/jpeg,image/png,image/webp" /><small>JPEG, PNG ou WebP · 10 Mo maximum.</small>{errors.cover && <span className="admin-error">{errors.cover[0]}</span>}</label>
+        {entry?.cover_url && <label className="admin-check"><input type="checkbox" name="remove_cover" value="1" />Retirer la couverture actuelle</label>}
+    </>;
+}
+
+function AdvancedMedia({ entry, errors }) {
+    return <>
+        <Field name="cover_alt" label="Description de l’image (accessibilité)" value={entry?.cover_alt} maxLength={255} errors={errors} />
+        {!!entry?.gallery_urls?.length && <div className="admin-gallery">{entry.gallery_urls.map((url, index) => <img key={url} src={url} alt={`${entry.title}, capture ${index + 1}`} />)}</div>}
+        <label className="admin-field">Photos complémentaires (galerie)<input type="file" name="gallery[]" multiple accept="image/jpeg,image/png,image/webp" /><small>3 images maximum, 10 Mo chacune. Remplace la galerie actuelle.</small>{Object.entries(errors).filter(([key]) => key.startsWith('gallery')).map(([key, messages]) => <span className="admin-error" key={key}>{messages[0]}</span>)}</label>
+        {!!entry?.gallery_urls?.length && <label className="admin-check"><input type="checkbox" name="remove_gallery" value="1" />Retirer toute la galerie actuelle</label>}
     </>;
 }
 
 function EntryEditor({ type, entry, onSaved, onCancel }) {
     const state = useSubmission(); const labels = entryLabels[type];
+    const isNews = type === 'news';
+    const isProject = type === 'project';
+    const hasAdvancedNews = Boolean(entry?.category || entry?.url || entry?.slug || entry?.gallery_urls?.length);
+    const hasAdvancedProject = Boolean(entry?.organization || entry?.period || entry?.demo_url || entry?.problem || entry?.solution || entry?.contribution || entry?.result || entry?.gallery_urls?.length || (entry?.sort_order && entry.sort_order > 0));
+
     async function submit(event) {
         event.preventDefault(); const form = new FormData(event.currentTarget); const body = Object.fromEntries(form);
-        body.type = type; body.is_published = form.has('is_published'); body.sort_order = Number(body.sort_order);
+        body.type = type; body.is_published = form.has('is_published');
+        body.sort_order = body.sort_order !== undefined && body.sort_order !== '' ? Number(body.sort_order) : 0;
         body.technologies = (body.technologies || '').split(',').map(item => item.trim()).filter(Boolean);
         let payload = body;
         let method = entry ? 'PUT' : 'POST';
         if (['project', 'news'].includes(type)) {
             form.set('type', type); form.set('is_published', body.is_published ? '1' : '0');
             form.set('is_featured', form.has('is_featured') ? '1' : '0');
+            form.set('sort_order', String(body.sort_order || 0));
             form.set('technologies', JSON.stringify(body.technologies));
             if (!form.get('cover')?.size) form.delete('cover');
             if (!form.getAll('gallery[]').some(file => file.size)) form.delete('gallery[]');
@@ -116,30 +211,94 @@ function EntryEditor({ type, entry, onSaved, onCancel }) {
         }
         await state.run(async () => { await request(entry ? `${config.entriesUrl}/${entry.id}` : config.entriesUrl, {method, body: payload}); await onSaved(entry ? 'Élément modifié.' : 'Élément ajouté.'); });
     }
-    return <form id="entry-editor" className="admin-panel" tabIndex={-1} aria-labelledby="entry-editor-title" onSubmit={submit}><div className="admin-panel-title"><h2 id="entry-editor-title">{entry ? 'Modifier' : 'Ajouter un élément'}</h2>{entry && <button type="button" className="admin-secondary" onClick={onCancel}>Annuler</button>}</div>
+
+    return <form id="entry-editor" className="admin-panel" tabIndex={-1} aria-labelledby="entry-editor-title" onSubmit={submit}>
+        <div className="admin-panel-title">
+            <div>
+                <h2 id="entry-editor-title">{entry ? `Modifier ${isNews ? 'la publication' : isProject ? 'le projet' : 'l’élément'}` : isNews ? 'Nouvelle publication' : isProject ? 'Nouveau projet' : 'Ajouter un élément'}</h2>
+                {(isNews || isProject) && <span className="admin-quick-badge">⚡ Formulaire simplifié</span>}
+            </div>
+            {entry && <button type="button" className="admin-secondary" onClick={onCancel}>Annuler</button>}
+        </div>
+
         <Field name="title" label={labels[0]} required maxLength={255} value={entry?.title} errors={state.errors} />
-        {['education', 'experience', 'project'].includes(type) && <><Field name="organization" label={labels[1]} maxLength={255} value={entry?.organization} errors={state.errors} /><Field name="period" label={labels[2]} maxLength={120} value={entry?.period} errors={state.errors} /></>}
-        {type === 'project' && <><Field name="category" label="Catégorie du projet" maxLength={120} value={entry?.category} errors={state.errors} /><Field name="technologies" label="Technologies, séparées par des virgules" value={entry?.technologies?.join(', ')} errors={state.errors} /></>}
-        <Field name="description" required={type === 'news'} label={type === 'language' ? 'Niveau de maîtrise' : type === 'skill' ? 'Technologies et savoir-faire' : 'Description'} textarea rows={4} maxLength={10000} value={entry?.description} errors={state.errors} />
-        {['education', 'experience', 'project', 'news'].includes(type) && <Field name="url" label="Lien externe (facultatif)" type="url" maxLength={2048} value={entry?.url} errors={state.errors} />}
-        {type === 'project' && <>
-            <Field name="slug" label="Adresse de l’étude de cas (automatique si vide)" maxLength={180} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={entry?.slug} errors={state.errors} />
-            <Field name="demo_url" label="Lien de démonstration (facultatif)" type="url" value={entry?.demo_url} errors={state.errors} />
-            {[['problem', 'Le besoin / problème'], ['solution', 'La solution'], ['contribution', 'Votre contribution réelle'], ['result', 'Résultats vérifiés (laisser vide si non mesurés)']].map(([name, label]) => <Field key={name} name={name} label={label} textarea rows={3} maxLength={10000} value={entry?.[name]} errors={state.errors} />)}
-            <EntryMedia entry={entry} errors={state.errors} />
-            <label className="admin-check"><input type="checkbox" name="is_featured" defaultChecked={entry?.is_featured ?? false} />Mettre ce projet en avant</label>
+
+        {/* Champs principaux pour un projet */}
+        {isProject && <>
+            <div className="admin-form-grid">
+                <Field name="category" label="Catégorie (ex. Application web, API REST)" maxLength={120} value={entry?.category} errors={state.errors} />
+                <Field name="technologies" label="Technologies (séparées par des virgules)" value={entry?.technologies?.join(', ')} placeholder="Laravel, React, MySQL..." errors={state.errors} />
+            </div>
+            <Field name="description" label="Description synthétique" textarea rows={3} maxLength={10000} value={entry?.description} placeholder="Présentation rapide du projet..." errors={state.errors} />
+            <Field name="url" label="Lien du projet ou GitHub (facultatif)" type="url" maxLength={2048} value={entry?.url} placeholder="https://github.com/..." errors={state.errors} />
+            <CoverUpload entry={entry} errors={state.errors} />
+            <div className="admin-form-grid">
+                <label className="admin-check"><input name="is_published" type="checkbox" defaultChecked={entry?.is_published ?? true} />Afficher sur le portfolio public</label>
+                <label className="admin-check"><input type="checkbox" name="is_featured" defaultChecked={entry?.is_featured ?? false} />Mettre ce projet en avant (vedette)</label>
+            </div>
+
+            <details className="admin-details" defaultOpen={hasAdvancedProject}>
+                <summary>Étude de cas détaillée & options complémentaires (facultatif) ▾</summary>
+                <div className="admin-details-content">
+                    <div className="admin-form-grid">
+                        <Field name="organization" label="Client / organisation" maxLength={255} value={entry?.organization} errors={state.errors} />
+                        <Field name="period" label="Période ou durée" maxLength={120} value={entry?.period} errors={state.errors} />
+                    </div>
+                    <Field name="demo_url" label="Lien de démonstration interactive" type="url" value={entry?.demo_url} errors={state.errors} />
+                    <Field name="problem" label="Le besoin / problème" textarea rows={2} maxLength={10000} value={entry?.problem} errors={state.errors} />
+                    <Field name="solution" label="La solution réalisée" textarea rows={2} maxLength={10000} value={entry?.solution} errors={state.errors} />
+                    <Field name="contribution" label="Votre contribution réelle" textarea rows={2} maxLength={10000} value={entry?.contribution} errors={state.errors} />
+                    <Field name="result" label="Résultats vérifiés / impact" textarea rows={2} maxLength={10000} value={entry?.result} errors={state.errors} />
+                    <div className="admin-form-grid">
+                        <Field name="slug" label="Adresse personnalisée (auto si vide)" maxLength={180} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={entry?.slug} errors={state.errors} />
+                        <Field name="sort_order" label="Ordre d’affichage" type="number" min="0" max="10000" value={entry?.sort_order ?? 0} errors={state.errors} />
+                    </div>
+                    <AdvancedMedia entry={entry} errors={state.errors} />
+                </div>
+            </details>
             {entry?.public_url && <a className="admin-text-link" href={entry.public_url} target="_blank" rel="noopener noreferrer">Voir l’étude de cas publiée ↗</a>}
         </>}
-        {type === 'news' && <>
-            <Field name="occurred_on" label="Date de la publication / de l’événement" type="date" value={entry?.occurred_on || new Date().toISOString().slice(0,10)} errors={state.errors} />
-            <Field name="category" label="Thème (événement, rencontre, solution…)" maxLength={120} value={entry?.category} errors={state.errors} />
-            <Field name="slug" label="Adresse de la publication (automatique si vide)" maxLength={180} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={entry?.slug} errors={state.errors} />
-            <EntryMedia entry={entry} errors={state.errors} />
-            {entry?.public_url && <a className="admin-text-link" href={entry.public_url} target="_blank" rel="noopener noreferrer">Voir la publication ↗</a>}
+
+        {/* Champs principaux pour une actualité / publication */}
+        {isNews && <>
+            <Field name="description" required label="Texte / contenu de la publication" textarea rows={5} maxLength={10000} value={entry?.description} placeholder="Partagez une actualité, une réalisation, un événement..." errors={state.errors} />
+            <CoverUpload entry={entry} errors={state.errors} />
+            <input type="hidden" name="sort_order" value={entry?.sort_order ?? 0} />
+            <label className="admin-check"><input name="is_published" type="checkbox" defaultChecked={entry?.is_published ?? true} />Publier immédiatement sur le portfolio</label>
+
+            <details className="admin-details" defaultOpen={hasAdvancedNews}>
+                <summary>Options avancées (date, thème, lien, galerie...) ▾</summary>
+                <div className="admin-details-content">
+                    <div className="admin-form-grid">
+                        <Field name="occurred_on" label="Date de l’événement" type="date" value={entry?.occurred_on || new Date().toISOString().slice(0, 10)} errors={state.errors} />
+                        <Field name="category" label="Thème (événement, rencontre, projet...)" maxLength={120} value={entry?.category} errors={state.errors} />
+                    </div>
+                    <Field name="url" label="Lien externe lié (facultatif)" type="url" maxLength={2048} value={entry?.url} errors={state.errors} />
+                    <Field name="slug" label="Adresse de la publication (automatique si vide)" maxLength={180} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={entry?.slug} errors={state.errors} />
+                    <AdvancedMedia entry={entry} errors={state.errors} />
+                </div>
+            </details>
+            {entry?.public_url && <a className="admin-text-link" href={entry.public_url} target="_blank" rel="noopener noreferrer">Voir la publication en ligne ↗</a>}
         </>}
-        {type === 'news' ? <input type="hidden" name="sort_order" value={entry?.sort_order ?? 0} /> : <Field name="sort_order" label="Ordre d’affichage (les plus petits en premier)" type="number" min="0" max="10000" required value={entry?.sort_order ?? 0} errors={state.errors} />}
-        <label className="admin-check"><input name="is_published" type="checkbox" defaultChecked={entry?.is_published ?? type !== 'news'} />Afficher sur le portfolio public</label>
-        <p className="admin-error" role="alert">{state.notice}</p><button className="admin-primary" disabled={state.busy}>{state.busy ? 'Enregistrement…' : entry ? 'Enregistrer' : 'Ajouter'}</button>
+
+        {/* Autres éléments : formations, expériences, compétences, langues, centres d'intérêt */}
+        {!isProject && !isNews && <>
+            {['education', 'experience'].includes(type) && <div className="admin-form-grid">
+                <Field name="organization" label={labels[1]} maxLength={255} value={entry?.organization} errors={state.errors} />
+                <Field name="period" label={labels[2]} maxLength={120} value={entry?.period} errors={state.errors} />
+            </div>}
+            <Field name="description" label={type === 'language' ? 'Niveau de maîtrise' : type === 'skill' ? 'Technologies et savoir-faire' : 'Description'} textarea rows={3} maxLength={10000} value={entry?.description} errors={state.errors} />
+            {['education', 'experience'].includes(type) && <Field name="url" label="Lien externe (facultatif)" type="url" maxLength={2048} value={entry?.url} errors={state.errors} />}
+            <div className="admin-form-grid">
+                <Field name="sort_order" label="Ordre d’affichage" type="number" min="0" max="10000" required value={entry?.sort_order ?? 0} errors={state.errors} />
+                <label className="admin-check" style={{ marginTop: '28px' }}><input name="is_published" type="checkbox" defaultChecked={entry?.is_published ?? true} />Afficher sur le portfolio</label>
+            </div>
+        </>}
+
+        <p className="admin-error" role="alert">{state.notice}</p>
+        <button className="admin-primary" disabled={state.busy}>
+            {state.busy ? 'Enregistrement…' : entry ? 'Enregistrer les modifications' : isNews ? 'Publier l’actualité' : isProject ? 'Enregistrer le projet' : 'Ajouter'}
+        </button>
     </form>;
 }
 
@@ -200,6 +359,334 @@ function Messages({ refresh, notify }) {
     return <section className="admin-messages"><p>{data.total} message{data.total > 1 ? 's' : ''} reçu{data.total > 1 ? 's' : ''}. Ces messages sont privés.</p>{!data.data.length && <div className="admin-panel admin-empty">Aucun message reçu pour le moment.</div>}{data.data.map(message => <article className="admin-message admin-panel" key={message.id}><div className="admin-panel-title"><h2>{message.subject}</h2><time dateTime={message.created_at}>{new Date(message.created_at).toLocaleDateString('fr-FR')}</time></div><p><strong>{message.name}</strong> · <a href={`mailto:${message.email}`}>{message.email}</a> <span className={message.read_at ? 'draft-state' : 'publication-state'}>{message.read_at ? 'Lu' : 'Non lu'}</span></p><p className="message-body">{message.message}</p><div className="admin-message-actions"><a className="admin-text-link" href={`mailto:${message.email}?subject=${encodeURIComponent(`Re: ${message.subject}`)}`}>Répondre par e-mail</a><button className="admin-secondary" type="button" onClick={() => changeMessage(message)}>{message.read_at ? 'Marquer non lu' : 'Marquer comme lu'}</button><button type="button" className="admin-danger" onClick={() => changeMessage(message, true)}>Supprimer</button></div></article>)}{data.last_page > 1 && <div className="admin-pagination"><button disabled={page === 1} onClick={() => setPage(page - 1)}>Précédent</button><span>Page {page} sur {data.last_page}</span><button disabled={page === data.last_page} onClick={() => setPage(page + 1)}>Suivant</button></div>}</section>;
 }
 
+function UsersAndRoles({ notify }) {
+    const [subTab, setSubTab] = useState('users');
+    const [users, setUsers] = useState([]);
+    const [roles, setRoles] = useState([]);
+    const [permissions, setPermissions] = useState([]);
+    const [currentUserId, setCurrentUserId] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [editingRole, setEditingRole] = useState(null);
+    const [selectedPerms, setSelectedPerms] = useState([]);
+    const state = useSubmission();
+
+    async function loadData() {
+        try {
+            setLoading(true);
+            const [usersRes, rolesRes] = await Promise.all([
+                request(config.usersUrl),
+                request(config.rolesUrl),
+            ]);
+            setUsers(usersRes.users || []);
+            setRoles(rolesRes.roles || []);
+            setPermissions(rolesRes.permissions || []);
+            setCurrentUserId(usersRes.current_user_id);
+        } catch (err) {
+            state.setNotice(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    useEffect(() => { loadData(); }, []);
+
+    async function handleCreateUser(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const body = Object.fromEntries(new FormData(form));
+        if (body.role_id) {
+            body.roles = [Number(body.role_id)];
+        }
+        await state.run(async () => {
+            const res = await request(config.usersUrl, { method: 'POST', body });
+            form.reset();
+            notify(res.message || 'Utilisateur créé avec succès.');
+            await loadData();
+        });
+    }
+
+    async function handleUpdateUserRole(user, roleId) {
+        if (!roleId) return;
+        await state.run(async () => {
+            const res = await request(`${config.usersUrl}/${user.id}/roles`, {
+                method: 'PUT',
+                body: { roles: [Number(roleId)] },
+            });
+            notify(res.message || 'Rôle mis à jour.');
+            await loadData();
+        });
+    }
+
+    async function handleDeleteUser(user) {
+        if (!window.confirm(`Supprimer le compte de « ${user.name} » (${user.email}) ? Cette action est irréversible.`)) return;
+        await state.run(async () => {
+            const res = await request(`${config.usersUrl}/${user.id}`, { method: 'DELETE' });
+            notify(res.message || 'Utilisateur supprimé.');
+            await loadData();
+        });
+    }
+
+    function startEditRole(role = null) {
+        setEditingRole(role);
+        if (role) {
+            setSelectedPerms((role.permissions || []).map(p => p.id));
+        } else {
+            setSelectedPerms([]);
+        }
+        state.setNotice('');
+    }
+
+    function togglePermission(permId) {
+        setSelectedPerms(prev =>
+            prev.includes(permId) ? prev.filter(id => id !== permId) : [...prev, permId]
+        );
+    }
+
+    async function handleSaveRole(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const body = Object.fromEntries(new FormData(form));
+        body.permissions = selectedPerms;
+        await state.run(async () => {
+            const url = editingRole ? `${config.rolesUrl}/${editingRole.id}` : config.rolesUrl;
+            const method = editingRole ? 'PUT' : 'POST';
+            const res = await request(url, { method, body });
+            notify(res.message || 'Rôle enregistré.');
+            startEditRole(null);
+            form.reset();
+            await loadData();
+        });
+    }
+
+    async function handleDeleteRole(role) {
+        if (!window.confirm(`Supprimer définitivement le rôle « ${role.name} » ?`)) return;
+        await state.run(async () => {
+            const res = await request(`${config.rolesUrl}/${role.id}`, { method: 'DELETE' });
+            notify(res.message || 'Rôle supprimé.');
+            if (editingRole?.id === role.id) startEditRole(null);
+            await loadData();
+        });
+    }
+
+    const permissionsByModule = permissions.reduce((acc, p) => {
+        const mod = p.module || 'Général';
+        if (!acc[mod]) acc[mod] = [];
+        acc[mod].push(p);
+        return acc;
+    }, {});
+
+    return (
+        <div>
+            <div className="admin-subnav" role="tablist">
+                <button
+                    type="button"
+                    className={`admin-subnav-button ${subTab === 'users' ? 'is-active' : ''}`}
+                    onClick={() => setSubTab('users')}
+                >
+                    👥 Utilisateurs & Rôles affectés ({users.length})
+                </button>
+                <button
+                    type="button"
+                    className={`admin-subnav-button ${subTab === 'roles' ? 'is-active' : ''}`}
+                    onClick={() => setSubTab('roles')}
+                >
+                    🛡️ Rôles & Permissions ({roles.length})
+                </button>
+            </div>
+
+            {subTab === 'users' ? (
+                <div className="admin-editor-layout">
+                    <section className="admin-entry-list">
+                        <div className="admin-panel-title">
+                            <h2>{users.length} utilisateur{users.length > 1 ? 's' : ''}</h2>
+                        </div>
+                        {loading ? (
+                            <p role="status">Chargement des utilisateurs…</p>
+                        ) : (
+                            users.map(u => (
+                                <article className="admin-entry" key={u.id}>
+                                    <div>
+                                        <h3>
+                                            {u.name} {u.id === currentUserId && <span className="admin-quick-badge">Vous</span>}
+                                        </h3>
+                                        <p>{u.email} · Inscrit le {new Date(u.created_at).toLocaleDateString('fr-FR')}</p>
+                                        <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                            <span className={`admin-role-badge ${u.roles?.[0]?.slug || ''}`}>
+                                                {u.roles?.map(r => r.name).join(', ') || 'Sans rôle'}
+                                            </span>
+                                            {u.id !== currentUserId && (
+                                                <select
+                                                    aria-label={`Changer le rôle de ${u.name}`}
+                                                    style={{ fontSize: '13px', padding: '4px 8px', borderRadius: '4px', border: '1px solid #daddd4', background: '#fff' }}
+                                                    value={u.roles?.[0]?.id || ''}
+                                                    onChange={e => handleUpdateUserRole(u, e.target.value)}
+                                                >
+                                                    {roles.map(r => (
+                                                        <option key={r.id} value={r.id}>{r.name}</option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {u.id !== currentUserId && (
+                                        <div className="admin-row-actions">
+                                            <button
+                                                type="button"
+                                                className="admin-danger"
+                                                disabled={state.busy}
+                                                onClick={() => handleDeleteUser(u)}
+                                            >
+                                                Supprimer
+                                            </button>
+                                        </div>
+                                    )}
+                                </article>
+                            ))
+                        )}
+                        <p className="admin-error" role="alert">{state.notice}</p>
+                    </section>
+
+                    <form className="admin-panel" onSubmit={handleCreateUser}>
+                        <div className="admin-panel-title">
+                            <h2>Créer un utilisateur & affecter un rôle</h2>
+                        </div>
+                        <p style={{ color: '#60645b', fontSize: '14px', marginTop: '-10px' }}>
+                            Le rôle choisi détermine les permissions accordées sur le portfolio.
+                        </p>
+                        <Field name="name" label="Nom complet" required placeholder="ex. Karim OUEDRAOGO" errors={state.errors} />
+                        <Field name="email" label="Adresse e-mail" type="email" required placeholder="utilisateur@example.com" errors={state.errors} />
+
+                        <label className="admin-field" htmlFor="field-user-role">
+                            Rôle à affecter
+                            <select id="field-user-role" name="role_id" defaultValue={roles[0]?.id || ''}>
+                                {roles.map(r => (
+                                    <option key={r.id} value={r.id}>{r.name} — {r.description || r.slug}</option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <Field name="password" label="Mot de passe (8 caractères minimum)" type="password" required autoComplete="new-password" errors={state.errors} />
+                        <Field name="password_confirmation" label="Confirmez le mot de passe" type="password" required autoComplete="new-password" errors={state.errors} />
+                        <p className="admin-error" role="alert">{state.notice}</p>
+                        <button className="admin-primary" disabled={state.busy}>
+                            {state.busy ? 'Création en cours…' : 'Créer l’utilisateur'}
+                        </button>
+                    </form>
+                </div>
+            ) : (
+                <div className="admin-editor-layout">
+                    <section className="admin-entry-list">
+                        <div className="admin-panel-title">
+                            <h2>{roles.length} rôle{roles.length > 1 ? 's' : ''} configuré{roles.length > 1 ? 's' : ''}</h2>
+                            <button type="button" className="admin-secondary" onClick={() => startEditRole(null)}>
+                                Nouveau rôle
+                            </button>
+                        </div>
+                        {loading ? (
+                            <p role="status">Chargement des rôles…</p>
+                        ) : (
+                            roles.map(r => {
+                                const isSystem = ['super-admin', 'editor', 'moderator'].includes(r.slug);
+                                const isSelected = editingRole?.id === r.id;
+                                return (
+                                    <article className={`admin-entry ${isSelected ? 'selected' : ''}`} key={r.id}>
+                                        <div>
+                                            <h3>
+                                                {r.name} <small style={{ fontSize: '12px', color: '#60645b' }}>({r.slug})</small>
+                                                {isSystem && <span className="admin-quick-badge" style={{ marginLeft: '8px' }}>Système</span>}
+                                            </h3>
+                                            <p>{r.description || 'Aucune description'}</p>
+                                            <p style={{ fontSize: '13px', color: '#456f3a', marginTop: '4px' }}>
+                                                {r.users_count || 0} utilisateur{(r.users_count || 0) > 1 ? 's' : ''} associé{(r.users_count || 0) > 1 ? 's' : ''}
+                                            </p>
+                                            <div className="admin-role-tags">
+                                                {r.permissions?.length ? (
+                                                    r.permissions.map(p => (
+                                                        <span className="admin-perm-pill" key={p.id}>
+                                                            {p.name}
+                                                        </span>
+                                                    ))
+                                                ) : (
+                                                    <span style={{ fontSize: '12px', color: '#888' }}>Aucune permission attribuée</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="admin-row-actions">
+                                            <button type="button" onClick={() => startEditRole(r)}>
+                                                Modifier permissions
+                                            </button>
+                                            {!isSystem && (
+                                                <button
+                                                    type="button"
+                                                    className="admin-danger"
+                                                    disabled={state.busy}
+                                                    onClick={() => handleDeleteRole(r)}
+                                                >
+                                                    Supprimer
+                                                </button>
+                                            )}
+                                        </div>
+                                    </article>
+                                );
+                            })
+                        )}
+                        <p className="admin-error" role="alert">{state.notice}</p>
+                    </section>
+
+                    <form className="admin-panel" key={editingRole?.id || 'new-role'} onSubmit={handleSaveRole}>
+                        <div className="admin-panel-title">
+                            <h2>{editingRole ? `Modifier : ${editingRole.name}` : 'Créer un rôle'}</h2>
+                            {editingRole && (
+                                <button type="button" className="admin-secondary" onClick={() => startEditRole(null)}>
+                                    Annuler
+                                </button>
+                            )}
+                        </div>
+                        <p style={{ color: '#60645b', fontSize: '14px', marginTop: '-10px' }}>
+                            Définissez le nom du rôle et cochez les permissions associées.
+                        </p>
+
+                        <Field name="name" label="Nom du rôle" required defaultValue={editingRole?.name || ''} placeholder="ex. Gestionnaire Projets" errors={state.errors} />
+                        <Field name="description" label="Description du rôle" textarea rows={2} defaultValue={editingRole?.description || ''} placeholder="Rôle dédié à la saisie des réalisations..." errors={state.errors} />
+
+                        <div style={{ marginTop: '8px' }}>
+                            <h3 style={{ fontSize: '15px', marginBottom: '12px' }}>Affectation des permissions :</h3>
+                            {Object.entries(permissionsByModule).map(([moduleName, perms]) => (
+                                <div className="admin-permissions-group" key={moduleName}>
+                                    <h4>{moduleName}</h4>
+                                    <div className="admin-permissions-list">
+                                        {perms.map(p => {
+                                            const isChecked = selectedPerms.includes(p.id);
+                                            return (
+                                                <label className="admin-perm-check" key={p.id}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={() => togglePermission(p.id)}
+                                                    />
+                                                    <div>
+                                                        <strong>{p.name}</strong>
+                                                        {p.description && <span className="admin-perm-desc">{p.description}</span>}
+                                                    </div>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <p className="admin-error" role="alert">{state.notice}</p>
+                        <button className="admin-primary" disabled={state.busy}>
+                            {state.busy ? 'Enregistrement…' : editingRole ? 'Mettre à jour le rôle' : 'Créer le rôle'}
+                        </button>
+                    </form>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function Admin() {
     const initialView = () => sections.some(([key]) => key === window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'overview';
     const menuButton = useRef(null);
@@ -232,7 +719,7 @@ function Admin() {
     }
     async function logout() { try { const result = await request(config.logoutUrl, {method: 'POST'}); window.location.assign(result.redirect); } catch (e) {setError(e.message);} }
     const title = sections.find(([key]) => key === view)?.[1];
-    return <div className="admin-layout"><a className="skip-link" href="#admin-content">Aller au contenu</a>{open && <button className="menu-backdrop admin-backdrop" type="button" tabIndex={-1} aria-label="Fermer le menu" onClick={() => {setOpen(false);menuButton.current?.focus();}} />}<header className="admin-sidebar"><a href="#profile" className="admin-brand">k.<span>Portfolio Karim<small>Administration</small></span></a><button ref={menuButton} type="button" className="admin-menu" aria-controls="admin-navigation" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'Fermer le menu' : 'Menu'}</button><nav onClick={navigate} className={open ? 'open' : ''} id="admin-navigation" aria-label="Administration">{sections.map(([key, label]) => <a key={key} href={`#${key}`} aria-current={view === key ? 'page' : undefined}>{label}</a>)}<a href={config.home} target="_blank" rel="noopener noreferrer">Voir le portfolio ↗</a><button type="button" onClick={logout}>Se déconnecter</button></nav></header><main className="admin-content" id="admin-content" tabIndex={-1}><div className="admin-page-title"><div><h1 id="admin-page-heading" tabIndex={-1}>{title}</h1><p>Le portfolio de {data?.profile?.display_name || 'Karim'}, à votre image.</p></div><a href={config.home} className="admin-secondary" target="_blank" rel="noopener noreferrer">Aperçu public ↗</a></div><p className="admin-success" role="status" aria-live="polite">{notice}</p>{error ? <div className="admin-panel"><p className="admin-error" role="alert">{error}</p><button type="button" onClick={() => refresh().catch(e => setError(e.message))}>Réessayer</button></div> : !data ? <p role="status">Chargement du portfolio…</p> : view === 'overview' ? <Overview data={data} /> : view === 'settings' ? <Settings key={data.profile?.updated_at || 'settings'} data={data} refresh={refresh} notify={setNotice} /> : view === 'profile' || view === 'contact' ? <ProfileForm key={`${view}-${data.profile?.updated_at || 'new'}`} data={data} contactOnly={view === 'contact'} refresh={refresh} notify={setNotice} /> : view === 'messages' ? <Messages refresh={refresh} notify={setNotice} /> : <Entries key={view} type={view} data={data} refresh={refresh} notify={setNotice} />}</main></div>;
+    return <div className="admin-layout"><a className="skip-link" href="#admin-content">Aller au contenu</a>{open && <button className="menu-backdrop admin-backdrop" type="button" tabIndex={-1} aria-label="Fermer le menu" onClick={() => {setOpen(false);menuButton.current?.focus();}} />}<header className="admin-sidebar"><a href="#profile" className="admin-brand">k.<span>Portfolio Karim<small>Administration</small></span></a><button ref={menuButton} type="button" className="admin-menu" aria-controls="admin-navigation" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'Fermer le menu' : 'Menu'}</button><nav onClick={navigate} className={open ? 'open' : ''} id="admin-navigation" aria-label="Administration">{sections.map(([key, label]) => <a key={key} href={`#${key}`} aria-current={view === key ? 'page' : undefined}>{label}</a>)}<a href={config.home} target="_blank" rel="noopener noreferrer">Voir le portfolio ↗</a><button type="button" onClick={logout}>Se déconnecter</button></nav></header><main className="admin-content" id="admin-content" tabIndex={-1}><div className="admin-page-title"><div><h1 id="admin-page-heading" tabIndex={-1}>{title}</h1><p>Le portfolio de {data?.profile?.display_name || 'Karim'}, à votre image.</p></div><a href={config.home} className="admin-secondary" target="_blank" rel="noopener noreferrer">Aperçu public ↗</a></div><p className="admin-success" role="status" aria-live="polite">{notice}</p>{error ? <div className="admin-panel"><p className="admin-error" role="alert">{error}</p><button type="button" onClick={() => refresh().catch(e => setError(e.message))}>Réessayer</button></div> : !data ? <p role="status">Chargement du portfolio…</p> : view === 'overview' ? <Overview data={data} /> : view === 'settings' ? <Settings key={data.profile?.updated_at || 'settings'} data={data} refresh={refresh} notify={setNotice} /> : view === 'profile' || view === 'contact' ? <ProfileForm key={`${view}-${data.profile?.updated_at || 'new'}`} data={data} contactOnly={view === 'contact'} refresh={refresh} notify={setNotice} /> : view === 'messages' ? <Messages refresh={refresh} notify={setNotice} /> : view === 'users' ? <UsersAndRoles notify={setNotice} /> : <Entries key={view} type={view} data={data} refresh={refresh} notify={setNotice} />}</main></div>;
 }
 
-createRoot(document.getElementById('admin-root')).render(config.login ? <Login /> : <Admin />);
+createRoot(document.getElementById('admin-root')).render(config.login ? <Auth /> : <Admin />);

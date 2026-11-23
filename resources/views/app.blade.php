@@ -19,7 +19,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="description" content="{{ $pageDescription }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#0a0d14">
@@ -30,7 +30,10 @@
     <meta property="og:title" content="{{ $pageTitle }}">
     <meta property="og:description" content="{{ $pageDescription }}">
     <meta property="og:url" content="{{ $canonical }}">
-    @if($ogImage)<meta property="og:image" content="{{ $ogImage }}">@endif
+    @if($ogImage)
+        <meta property="og:image" content="{{ $ogImage }}">
+        <link rel="preload" as="image" href="{{ $ogImage }}" fetchpriority="high">
+    @endif
     <meta name="twitter:card" content="summary_large_image">
     <title>{{ $pageTitle }}</title>
     <script>

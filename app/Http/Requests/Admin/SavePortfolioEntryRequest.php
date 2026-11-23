@@ -16,6 +16,14 @@ class SavePortfolioEntryRequest extends FormRequest
                 $this->merge(['technologies' => $technologies]);
             }
         }
+
+        if ($this->input('type') === 'news' && ! $this->filled('occurred_on')) {
+            $this->merge(['occurred_on' => today()->toDateString()]);
+        }
+
+        if (! $this->has('sort_order') || $this->input('sort_order') === null || $this->input('sort_order') === '') {
+            $this->merge(['sort_order' => 0]);
+        }
     }
 
     public function authorize(): bool
@@ -36,7 +44,7 @@ class SavePortfolioEntryRequest extends FormRequest
             'url' => ['nullable', 'url:http,https', 'max:2048'],
             'technologies' => ['nullable', 'array', 'max:30'],
             'technologies.*' => ['string', 'max:80'],
-            'sort_order' => ['required', 'integer', 'min:0', 'max:10000'],
+            'sort_order' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:10000'],
             'is_published' => ['required', 'boolean'],
             'is_featured' => ['sometimes', 'boolean'],
             'slug' => ['exclude_unless:type,project,news', 'nullable', 'string', 'max:180', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::unique('portfolio_entries', 'slug')->ignore($this->route('entry')?->id)],
@@ -46,11 +54,27 @@ class SavePortfolioEntryRequest extends FormRequest
             'result' => ['exclude_unless:type,project', 'nullable', 'string', 'max:10000'],
             'demo_url' => ['exclude_unless:type,project', 'nullable', 'url:http,https', 'max:2048'],
             'cover_alt' => ['exclude_unless:type,project,news', 'nullable', 'string', 'max:255'],
-            'cover' => ['exclude_unless:type,project,news', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=4096,max_height=4096'],
+            'cover' => ['exclude_unless:type,project,news', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240', 'dimensions:max_width=8192,max_height=8192'],
             'remove_cover' => ['exclude_unless:type,project,news', 'sometimes', 'boolean'],
             'gallery' => ['exclude_unless:type,project,news', 'nullable', 'array', 'max:3'],
-            'gallery.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:1024', 'dimensions:max_width=4096,max_height=4096'],
+            'gallery.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:10240', 'dimensions:max_width=8192,max_height=8192'],
             'remove_gallery' => ['exclude_unless:type,project,news', 'sometimes', 'boolean'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'cover.max' => 'La photo de couverture ne doit pas dépasser 10 Mo.',
+            'cover.image' => 'Le fichier doit être une image valide.',
+            'cover.mimes' => 'Le format de la couverture doit être JPG, PNG ou WebP.',
+            'cover.dimensions' => 'Les dimensions de l’image sont trop grandes (maximum 8192x8192 px).',
+            'gallery.*.max' => 'Chaque photo de la galerie ne doit pas dépasser 10 Mo.',
+            'gallery.*.image' => 'Chaque fichier de galerie doit être une image valide.',
+            'gallery.*.mimes' => 'Les photos de la galerie doivent être au format JPG, PNG ou WebP.',
         ];
     }
 }

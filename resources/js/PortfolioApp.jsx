@@ -5,6 +5,9 @@ import ContactForm from './Components/ContactForm';
 import ThemeToggle from './Components/ThemeToggle';
 import ProjectDetail from './Components/ProjectDetail';
 import NewsPage from './Components/NewsPage';
+import AmbientBackground from './Components/AmbientBackground';
+import ProjectBentoGrid from './Components/ProjectBentoGrid';
+import InteractivePortrait from './Components/InteractivePortrait';
 
 const portfolio = JSON.parse(document.getElementById('portfolio-data')?.textContent || '{}');
 const profile = portfolio.profile || {};
@@ -61,12 +64,25 @@ export default function PortfolioApp() {
         if (!('IntersectionObserver' in window)) return;
         const observer = new IntersectionObserver(items => {
             items.forEach(item => { if (item.isIntersecting) { item.target.classList.add('is-visible'); observer.unobserve(item.target); } });
-        }, { threshold: 0.12 });
-        document.querySelectorAll('.reveal').forEach(element => observer.observe(element));
+        }, { threshold: 0.1 });
+
+        const observeElements = () => {
+            document.querySelectorAll('.reveal:not(.is-visible)').forEach(element => observer.observe(element));
+        };
+        observeElements();
+
         const sections = new IntersectionObserver(items => { items.forEach(item => { if (item.isIntersecting) setActive(item.target.id); }); }, { rootMargin: '-10% 0px -60% 0px' });
         document.querySelectorAll('section[id]').forEach(section => sections.observe(section));
-        return () => { observer.disconnect(); sections.disconnect(); };
-    }, [filter, career]);
+
+        const mutationObserver = new MutationObserver(() => observeElements());
+        mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+        return () => {
+            observer.disconnect();
+            sections.disconnect();
+            mutationObserver.disconnect();
+        };
+    }, [career]);
 
     useEffect(() => {
         const escape = event => { if (event.key === 'Escape' && menuOpen) { setMenuOpen(false); menuButton.current?.focus(); } };
@@ -100,6 +116,7 @@ export default function PortfolioApp() {
     }, [menuOpen]);
 
     return <div className="portfolio-site">
+        <AmbientBackground />
         <a href="#contenu" className="skip-link">Aller au contenu</a>
         {menuOpen && <button className="menu-backdrop" type="button" tabIndex={-1} aria-label="Fermer le menu" onClick={() => {setMenuOpen(false);menuButton.current?.focus();}} />}
         <header ref={header} className="site-header" onBlur={event => {if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setMenuOpen(false);}}>
@@ -117,20 +134,23 @@ export default function PortfolioApp() {
                         <h1 id="hero-title" aria-label={profile.full_name || displayName}><span className="name-mask"><span>{displayName}.</span></span>{familyName && <span className="name-mask family-name"><span>{familyName}</span></span>}</h1>
                         <div className="hero-note"><div><p className="hero-role">{profile.job_title || 'Développeur web'}</p><p>{profile.tagline || 'Du développement web aux solutions informatiques.'}</p></div><a href="#contact" className="button">{text('hero_cta', 'Parlons de votre projet')}<Arrow diagonal /></a></div>
                     </div>
-                    <figure className="hero-portrait">{profile.photo_url ? <div className="portrait-frame"><img src={profile.photo_url} alt={profile.full_name || displayName} width="384" height="404" fetchPriority="high" /></div> : <div className="portrait-fallback">{displayName}</div>}<figcaption><span>{profile.full_name || displayName}</span><span>Logiciel & support IT</span></figcaption></figure>
+                    <InteractivePortrait
+                        photoUrl={profile.photo_url}
+                        fullName={profile.full_name}
+                        displayName={displayName}
+                        jobTitle={profile.job_title}
+                        location={profile.location}
+                    />
                 </div>
                 <div className="hero-bottom"><a href="#projets" className="text-link">Explorer les réalisations<Arrow down /></a><p>{content.hero_footer}</p></div>
             </section>
 
             <section tabIndex={-1} className="work-section page-gutter" id="projets" aria-labelledby="work-title">
-                <div className="section-heading reveal"><h2 id="work-title">{text('work_heading', 'Projets choisis.')}</h2><p>{content.work_intro}</p></div>
-                <div className="project-layout">
-                    <div className="project-index reveal"><div className="project-filters" role="group" aria-label="Filtrer les projets">{filters.map(item => <button type="button" key={item} aria-pressed={filter === item} onClick={() => changeProject(() => { setFilter(item); setSelectedId(projects.find(project => item === 'Tous' || project.category === item)?.id); })}>{item}</button>)}</div>
-                        <div className="project-selectors" role="group" aria-label="Choisir un projet">{visibleProjects.map(project => <button type="button" key={project.id} aria-pressed={selectedProject?.id === project.id} onClick={() => changeProject(() => setSelectedId(project.id))}><span>{project.title}<small>{project.category || 'Projet web'}</small></span><Arrow diagonal /></button>)}</div>
-                        <p className="project-count" aria-live="polite">{visibleProjects.length} projet{visibleProjects.length > 1 ? 's' : ''} à découvrir</p>
-                    </div>
-                    <div className="project-showcase reveal" aria-live="polite" aria-atomic="true"><ProjectShowcase key={selectedProject?.id || 'empty'} project={selectedProject} /></div>
+                <div className="section-heading reveal">
+                    <h2 id="work-title">{text('work_heading', 'Projets choisis.')}</h2>
+                    <p>{content.work_intro || 'Applications, architectures web et réalisations sélectionnées.'}</p>
                 </div>
+                <ProjectBentoGrid projects={projects} emptyText={content.empty_projects || 'Aucun projet pour le moment.'} />
             </section>
 
             <section tabIndex={-1} className="about-section page-gutter" id="apropos" aria-labelledby="about-title">

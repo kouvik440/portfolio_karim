@@ -3,8 +3,14 @@
     .portfolio-site .name-mask > span { animation: name-enter 780ms cubic-bezier(.16, 1, .3, 1) both; }
     .portfolio-site .family-name > span { animation-delay: 90ms; }
     .portfolio-site .hero-note { animation: content-enter 650ms 180ms cubic-bezier(.16, 1, .3, 1) both; }
-    .portfolio-site .hero-portrait { animation: portrait-enter 850ms 100ms cubic-bezier(.16, 1, .3, 1) both; }
+    .portfolio-site .hero-portrait-container { animation: portrait-enter 850ms 100ms cubic-bezier(.16, 1, .3, 1) both; }
     .portfolio-site .reveal.is-visible { animation: content-enter 650ms cubic-bezier(.16, 1, .3, 1) both; animation-delay: calc(var(--reveal-order, 0) * 70ms); }
+    .portfolio-ambient-glow.aurora-one { animation: aurora-drift-one 22s ease-in-out infinite alternate; }
+    .portfolio-ambient-glow.aurora-two { animation: aurora-drift-two 26s ease-in-out infinite alternate; }
+    .portfolio-ambient-glow.aurora-three { animation: aurora-drift-one 28s ease-in-out infinite alternate-reverse; }
+
+    .portfolio-site .bento-card-container.reveal.is-visible,
+    .portfolio-site .bento-card.reveal.is-visible { animation: bento-enter 650ms cubic-bezier(.16, 1, .3, 1) both; animation-delay: calc(var(--reveal-order, 0) * 80ms); }
     .portfolio-site .project-showcase.reveal.is-visible { animation-name: showcase-enter; }
     .portfolio-site .career-row.reveal.is-visible { animation-name: row-enter; }
     .portfolio-site .hero-bottom { animation: content-enter 600ms 260ms cubic-bezier(.16, 1, .3, 1) both; }
@@ -42,9 +48,15 @@
 @keyframes menu-enter { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes project-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes project-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bento-enter { from { opacity: 0.15; transform: translateY(22px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes radar-ping { 0% { transform: scale(0.9); opacity: 0.9; } 70%, 100% { transform: scale(2.4); opacity: 0; } }
+@keyframes aurora-drift-one { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-25px, 20px) scale(1.05); } 100% { transform: translate(20px, -20px) scale(0.96); } }
+@keyframes aurora-drift-two { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(30px, -25px) scale(1.06); } 100% { transform: translate(-20px, 15px) scale(0.95); } }
 
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     .portfolio-site *, .portfolio-site *::before, .portfolio-site *::after { animation: none !important; transition: none !important; }
+    .portfolio-ambient-glow { animation: none !important; }
+    .availability > span::after { display: none !important; }
     ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
